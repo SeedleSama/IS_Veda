@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IS_配件筛选</title>
+    <style>
+        /* CSS 样式可以根据你的需求进行自定义 */
+        /* 添加表格边框样式 */
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        
+        th, td {
+            border: 1px solid #dddddd;
+            text-align: left;
+            padding: 8px;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        /*美化按钮*/
+        .button-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .button-container button {
+            padding: 10px;
+            background-color: #3498db;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .button-container button:hover {
+            background-color: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <h1>配件筛选</h1>
+    
+    <label for="searchBox">输入关键词:</label>
+    <input type="text" id="searchBox">
+    <button onclick="updateResults()">确认</button>
+    <button onclick="resetPage()">重置</button>
+    
+    <div class="button-container">
+
+        <button onclick="searchAndSortItems('level')">按稀有度排序</button>
+        <button onclick="searchAndSortItems('position')">按位置排序</button>
+        
+        <label>筛选稀有度：</label>
+        <input type="radio" name="level" value="all" checked> 全部
+        <input type="radio" name="level" value="S"> S级
+        <input type="radio" name="level" value="A"> A级
+        <input type="radio" name="level" value="B"> B级
+        <input type="radio" name="level" value="C"> C级
+
+        <label>筛选位置：</label>
+        <input type="radio" name="position" value="all" checked> 全部
+        <input type="radio" name="position" value="涂层"> 涂层
+        <input type="radio" name="position" value="装甲"> 装甲
+        <input type="radio" name="position" value="辅助"> 辅助
+        <input type="radio" name="position" value="子弹"> 子弹
+        <input type="radio" name="position" value="核心"> 核心
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>名称</th>
+                <th>描述</th>
+                <th>稀有度</th>
+                <th>位置</th>
+            </tr>
+        </thead>
+        <tbody id="itemList">
+            <!-- 道具将在这里列出 -->
+        </tbody>
+    </table>
+
+    <script>
+        // JavaScript 用于执行搜索、排序和筛选
+        const items = [
+            {"name": "可变粒子散发镀层", "description": "耐久提高20%,可变粒子浓度提高20%,每隔2秒对周围敌人造成一次伤害并造成随机异常,粒子浓度越高伤害越高.","level":"S","position":"涂层"},
+            {"name": "可变粒子防御模组", "description": "耐久提高30%,可变粒子浓度提高50%,每2%的粒子浓度使自身受到伤害减少1%(粒子浓度达到100%时额外提高20%最终减伤).", "level": "S", "position": "装甲"},
+            {"name": "巨型装甲", "description": "耐久提高50%,最大耐久每有1000点防御提高1%.", "level": "S", "position": "装甲"},
+            {"name": "可变粒子发生器", "description": "切换武器或动作衔接速度提高10%,每隔1秒增加2%的可变粒子浓度(浓度上限100%).", "level": "S", "position": "辅助"},
+            {"name": "幻影干扰装置", "description": "耐久提高10%,每秒使自身附近的随机一个敌方分身或幻象消失,升级提高范围,最大为4个身位","level":"S","position":"辅助"},
+            {"name": "黑金对剑", "description": "格斗武器攻击提高20%,前2门武器是剑形格斗武器时攻击额外提高30%同时格斗攻击有20%概率造成200%伤害.", "level": "S", "position": "子弹"},
+            {"name": "电磁刀", "description": "电磁属性格斗武器攻击提高50%,电磁属性格斗攻击40%概率释放闪电链.", "level": "S", "position": "子弹"},
+            {"name": "爆炎剑", "description": "火焰属性格斗武器攻击提高50%,火焰属性格斗攻击25%概率释放火焰爆炸.", "level": "S", "position": "子弹"},
+            {"name": "活性核心", "description": "耐久和受治疗效果增加30%,耐久低于30%时回复10%耐久,触发间隔7秒","level":"S","position":"核心"},
+            {"name": "代偿关节", "description": "机甲动作的冷却速度提高27%,使用冷却5秒以上的动作时自身损失200点耐久(耐久不足时不生效)并使下一次格斗伤害的最终伤害值增加600.", "level": "S", "position": "核心"},
+            {"name": "挥发性液金涂层", "description": "首次受伤触发,20秒内受到最终伤害减少50%.", "level": "S", "position": "涂层"},
+            {"name": "超重柄", "description": "长柄格斗武器攻击提高50% 拥有长柄格斗武器时;格斗攻击命中时造成震荡效果使目标2秒内倒地概率增加50%,受到眩晕,失控,吹飞时间增加50%,触发间隔5秒.", "level": "S", "position": "子弹"},
+            {"name": "共鸣冰核", "description": "耐久提高25% 冰属性武器大于2门时冰属性攻击每隔3秒给目标叠加一层冻僵计数(动作冷却速度降低3%,最多叠加四层),4层时陷入永久冻伤(每次使用动作时受到一次冰冻伤害,升级提高伤害量).", "level": "S", "position": "核心"},
+            {"name": "紧急分离装置", "description": "1秒内承受超过最大伤害10%时紧急分离,最小间隔10秒.", "level": "S", "position": "辅助"},
+            {"name": "闪光弹", "description": "主炮,飞弹类型武器攻击提高20%.主炮,飞弹类型武器攻击附带闪光效果,造成失控,间隔2秒.", "level": "B", "position": "子弹"},
+            {"name": "黑金棒球棍", "description": "格斗攻击提高35%,追加指令：再见本垒打.", "level": "A", "position": "子弹"},
+            {"name": "便携导弹箱", "description": "飞弹类型武器攻击提高15%,每隔2秒发射一枚导弹.", "level": "C", "position": "子弹"},
+            {"name": "履带壳", "description": "降低受到的副炮和副炮类浮游炮伤害30%,30%几率格挡侧面攻击,可叠加.", "level": "B", "position": "装甲"},
+            {"name": "活性装甲", "description": "降低受到的冰火电属性伤害35%,受治疗效果增加30%.", "level": "B", "position": "装甲"},
+            {"name": "护盾装甲", "description": "耐久提高15%,耐久15%时触发反弹护盾短暂反弹子弹.", "level": "B", "position": "装甲"},
+            {"name": "泛用装甲", "description": "耐久提高25%.", "level": "B", "position": "装甲"},
+            {"name": "对主炮装甲", "description": "耐久提高15%,降低受到的主炮伤害25%", "level": "B", "position": "装甲"},
+            {"name": "闪光弹", "description": "辅助道具，提供额外的生命恢复.", "level": "B", "position": "子弹"},
+            {"name": "黑金棒球棍", "description": "受到这个装甲道具的保护，你将更难受伤.", "level": "C", "position": "子弹"},
+            {"name": "便携导弹箱", "description": "辅助道具，提供额外的生命恢复.", "level": "B", "position": "子弹"},
+            {"name": "履带壳", "description": "受到这个装甲道具的保护，你将更难受伤.", "level": "C", "position": "装甲"},
+            {"name": "活性装甲", "description": "辅助道具，提供额外的生命恢复.", "level": "B", "position": "装甲"},
+            {"name": "护盾装甲", "description": "受到这个装甲道具的保护，你将更难受伤.", "level": "C", "position": "装甲"},
+            {"name": "泛用装甲", "description": "辅助道具，提供额外的生命恢复.", "level": "B", "position": "装甲"},
+            {"name": "对主炮装甲", "description": "受到这个装甲道具的保护，你将更难受伤.", "level": "C", "position": "装甲"},
+            {"name": "闪光弹", "description": "辅助道具，提供额外的生命恢复.", "level": "B", "position": "子弹"},
+            {"name": "黑金棒球棍", "description": "受到这个装甲道具的保护，你将更难受伤.", "level": "C", "position": "子弹"},
+            {"name": "便携导弹箱", "description": "辅助道具，提供额外的生命恢复.", "level": "B", "position": "子弹"},
+            {"name": "履带壳", "description": "受到这个装甲道具的保护，你将更难受伤.", "level": "C", "position": "装甲"},
+            {"name": "活性装甲", "description": "辅助道具，提供额外的生命恢复.", "level": "B", "position": "装甲"},
+            {"name": "护盾装甲", "description": "受到这个装甲道具的保护，你将更难受伤.", "level": "C", "position": "装甲"},
+            {"name": "泛用装甲", "description": "辅助道具，提供额外的生命恢复.", "level": "B", "position": "装甲"},
+            {"name": "对主炮装甲", "description": "受到这个装甲道具的保护，你将更难受伤.", "level": "C", "position": "装甲"},
+            {"name": "闪光弹", "description": "辅助道具，提供额外的生命恢复.", "level": "B", "position": "子弹"},
+            {"name": "黑金棒球棍", "description": "受到这个装甲道具的保护，你将更难受伤.", "level": "C", "position": "子弹"},
+            {"name": "便携导弹箱", "description": "辅助道具，提供额外的生命恢复.", "level": "B", "position": "子弹"},
+            {"name": "履带壳", "description": "受到这个装甲道具的保护，你将更难受伤.", "level": "C", "position": "装甲"},
+            {"name": "活性装甲", "description": "辅助道具，提供额外的生命恢复.", "level": "B", "position": "装甲"},
+            {"name": "护盾装甲", "description": "受到这个装甲道具的保护，你将更难受伤.", "level": "C", "position": "装甲"},
+            {"name": "泛用装甲", "description": "辅助道具，提供额外的生命恢复.", "level": "B", "position": "装甲"},
+            {"name": "对主炮装甲", "description": "受到这个装甲道具的保护，你将更难受伤.", "level": "C", "position": "装甲"},
+            {"name": "闪光弹", "description": "辅助道具，提供额外的生命恢复.", "level": "B", "position": "子弹"},
+            {"name": "黑金棒球棍", "description": "受到这个装甲道具的保护，你将更难受伤.", "level": "C", "position": "子弹"},
+            {"name": "便携导弹箱", "description": "辅助道具，提供额外的生命恢复.", "level": "B", "position": "子弹"},
+            {"name": "履带壳", "description": "受到这个装甲道具的保护，你将更难受伤.", "level": "C", "position": "装甲"},
+            {"name": "活性装甲", "description": "辅助道具，提供额外的生命恢复.", "level": "B", "position": "装甲"},
+            {"name": "护盾装甲", "description": "受到这个装甲道具的保护，你将更难受伤.", "level": "C", "position": "装甲"},
+            {"name": "泛用装甲", "description": "辅助道具，提供额外的生命恢复.", "level": "B", "position": "装甲"},
+            {"name": "对主炮装甲", "description": "受到这个装甲道具的保护，你将更难受伤.", "level": "C", "position": "装甲"},
+            // 添加更多道具信息
+        ];
+
+        // 内置的排序规则
+        const levelOrder = {"S": 1, "A": 2, "B": 3, "C": 4};
+
+        function populateItemList() {
+            const itemList = document.getElementById("itemList");
+            itemList.innerHTML = ""; // 清空之前的结果
+            items.forEach(item => {
+                const itemRow = document.createElement("tr");
+                itemRow.innerHTML = `
+                    <td>${item.name}</td>
+                    <td>${item.description}</td>
+                    <td>${item.level}</td>
+                    <td>${item.position}</td>
+                `;
+                itemList.appendChild(itemRow);
+            });
+        }
+
+        function searchAndSortItems(sortBy) {
+            const userKeyword = document.getElementById("searchBox").value.toLowerCase();
+            const searchResults = items.filter(item => 
+                item.description.toLowerCase().includes(userKeyword) || 
+                item.name.toLowerCase().includes(userKeyword)
+            );
+
+            
+            // 排序
+            if (sortBy === 'level') {
+                searchResults.sort((a, b) => {
+                    if (levelOrder[a.level] !== levelOrder[b.level]) {
+                        return levelOrder[a.level] - levelOrder[b.level];
+                    } else {
+                        return a.position.localeCompare(b.position);
+                    }
+                });
+            } else if (sortBy === 'position') {
+                searchResults.sort((a, b) => {
+                    if (a.position !== b.position) {
+                        return a.position.localeCompare(b.position);
+                    } else {
+                        return levelOrder[b.level] - levelOrder[a.level];
+                    }
+                });
+            }
+
+            const itemList = document.getElementById("itemList");
+            itemList.innerHTML = ""; // 清空之前的结果
+
+            if (searchResults.length === 0) {
+                itemList.innerHTML = "<tr><td colspan='4'>没有找到匹配的道具。</td></tr>";
+            } else {
+                searchResults.forEach(item => {
+                    const itemRow = document.createElement("tr");
+                    itemRow.innerHTML = `
+                        <td>${item.name}</td>
+                        <td>${item.description}</td>
+                        <td>${item.level}</td>
+                        <td>${item.position}</td>
+                    `;
+                    itemList.appendChild(itemRow);
+                });
+            }
+        }
+
+        function filterByLevel(level) {
+            const filteredItems = items.filter(item => item.level === level);
+            const itemList = document.getElementById("itemList");
+            itemList.innerHTML = ""; // 清空之前的结果
+            if (filteredItems.length === 0) {
+                itemList.innerHTML = "<tr><td colspan='4'>没有找到匹配的道具。</td></tr>";
+            } else {
+                filteredItems.forEach(item => {
+                    const itemRow = document.createElement("tr");
+                    itemRow.innerHTML = `
+                        <td>${item.name}</td>
+                        <td>${item.description}</td>
+                        <td>${item.level}</td>
+                        <td>${item.position}</td>
+                    `;
+                    itemList.appendChild(itemRow);
+                });
+            }
+        }
+
+        function filterByPosition(position) {
+            const filteredItems = items.filter(item => item.position === position);
+            const itemList = document.getElementById("itemList");
+            itemList.innerHTML = ""; // 清空之前的结果
+            if (filteredItems.length === 0) {
+                itemList.innerHTML = "<tr><td colspan='4'>没有找到匹配的道具。</td></tr>";
+            } else {
+                filteredItems.forEach(item => {
+                    const itemRow = document.createElement("tr");
+                    itemRow.innerHTML = `
+                        <td>${item.name}</td>
+                        <td>${item.description}</td>
+                        <td>${item.level}</td>
+                        <td>${item.position}</td>
+                    `;
+                    itemList.appendChild(itemRow);
+                });
+            }
+        }
+
+        function updateResults() {
+            const userKeyword = document.getElementById("searchBox").value.toLowerCase();
+            const filterLevel = document.querySelector('input[name="level"]:checked').value;
+            const filterPosition = document.querySelector('input[name="position"]:checked').value;
+
+            const filteredItems = items.filter(item => {
+                const matchesKeyword = item.name.toLowerCase().includes(userKeyword) || item.description.toLowerCase().includes(userKeyword);
+                const matchesLevel = filterLevel === 'all' || item.level === filterLevel;
+                const matchesPosition = filterPosition === 'all' || item.position === filterPosition;
+                return matchesKeyword && matchesLevel && matchesPosition;
+            });
+
+            const itemList = document.getElementById("itemList");
+            itemList.innerHTML = "";
+
+            if (filteredItems.length === 0) {
+                itemList.innerHTML = "<tr><td colspan='4'>没有找到匹配的道具。</td></tr>";
+            } else {
+                filteredItems.forEach(item => {
+                    const itemRow = document.createElement("tr");
+                    itemRow.innerHTML = `
+                        <td>${item.name}</td>
+                        <td>${item.description}</td>
+                        <td>${item.level}</td>
+                        <td>${item.position}</td>
+                    `;
+                    itemList.appendChild(itemRow);
+                });
+            }
+        }
+
+        function resetPage() {
+            // 清空搜索栏
+            const searchBox = document.getElementById("searchBox");
+            searchBox.value = "";
+
+            // 重新列出所有道具
+            populateItemList();
+        }
+
+        // 页面加载时调用该函数以列出所有道具
+        window.addEventListener("load", populateItemList);
+    </script>
+</body>
+</html>
+
