@@ -1,0 +1,11 @@
+/* 默认样式 */
+body {
+    font-size: 30px;
+}
+
+/* 在小屏幕下的样式 */
+@media (max-width: 768px) {
+    body {
+        font-size: 14px;
+    }
+}
